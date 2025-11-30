@@ -2,10 +2,8 @@ from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.conf import settings
 from .models import Order, OrderItem
-from .telegram_bot import telegram_bot
+from .telegram_bot import get_telegram_bot
 import logging
-import os
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +19,15 @@ def send_order_notification(sender, instance, created, **kwargs):
         return
 
     chat_id = settings.TELEGRAM_ADMIN_CHAT_ID
+    if not chat_id:
+        logger.warning("TELEGRAM_ADMIN_CHAT_ID не установлен. Уведомление не отправлено.")
+        return
+    
+    telegram_bot = get_telegram_bot()
+    if not telegram_bot:
+        logger.warning("Telegram бот не инициализирован. Уведомление не отправлено.")
+        return
+    
     order_items = instance.orderitem_set.all()
 
     caption = (
@@ -53,14 +60,24 @@ def notify_order_status_change(sender, instance, **kwargs):
     if instance.pk:  # Проверяем, что заказ уже существует
         old_status = Order.objects.filter(pk=instance.pk).values_list("status", flat=True).first()
         if old_status and old_status != instance.status:
-            print(f"✅ Отправляем уведомление о смене статуса заказа {instance.pk}")
-            telegram_bot.send_message(settings.TELEGRAM_ADMIN_CHAT_ID, "Смена статуса заказа ⚠")
+            logger.info(f"Отправляем уведомление о смене статуса заказа {instance.pk}")
+            
+            chat_id = settings.TELEGRAM_ADMIN_CHAT_ID
+            if not chat_id:
+                logger.warning("TELEGRAM_ADMIN_CHAT_ID не установлен. Уведомление не отправлено.")
+                return
+            
+            telegram_bot = get_telegram_bot()
+            if not telegram_bot:
+                logger.warning("Telegram бот не инициализирован. Уведомление не отправлено.")
+                return
+            
             message = (
                 f"🔔 Статус заказа #{instance.pk} изменён!\n"
                 f"📦 Новый статус: {dict(Order.STATUS_CHOICES).get(instance.status)}\n"
                 f"📅 Дата изменения: {instance.order_date.strftime('%d.%m.%Y %H:%M')}"
             )
-            telegram_bot.send_message(settings.TELEGRAM_ADMIN_CHAT_ID, message)
+            telegram_bot.send_message(chat_id, message)
 
 
 

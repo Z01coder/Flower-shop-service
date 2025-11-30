@@ -1,6 +1,6 @@
 import asyncio
 from asgiref.sync import sync_to_async
-from django.db.models import Sum
+from django.db.models import Sum, F
 from django.utils.timezone import localtime, now
 from telegram.ext import CommandHandler, CallbackContext, Application
 from telegram import Update
@@ -71,17 +71,34 @@ class TelegramBot:
             for file in files.values():
                 file.close()
 
-# Создаём объект Telegram-бота
-telegram_bot = TelegramBot(settings.TELEGRAM_BOT_TOKEN)
+# Создаём объект Telegram-бота (lazy initialization)
+telegram_bot = None
+
+def get_telegram_bot():
+    """ Получить экземпляр Telegram бота с проверкой токена """
+    global telegram_bot
+    if telegram_bot is None:
+        token = settings.TELEGRAM_BOT_TOKEN
+        if not token:
+            logger.warning("TELEGRAM_BOT_TOKEN не установлен. Telegram бот не будет работать.")
+            return None
+        telegram_bot = TelegramBot(token)
+    return telegram_bot
 
 @sync_to_async
 def get_daily_analytics():
     """ Получение аналитики по заказам за день """
+    from .models import OrderItem
     today = localtime(now()).date()
     orders_today = Order.objects.filter(order_date__date=today)
 
     total_orders = orders_today.count()
-    total_income = orders_today.aggregate(total_income=Sum('orderitem__product__price'))['total_income'] or 0
+    # Учитываем quantity при расчете дохода
+    total_income = OrderItem.objects.filter(
+        order__in=orders_today
+    ).aggregate(
+        total_income=Sum(F('quantity') * F('product__price'))
+    )['total_income'] or 0
 
     return total_orders, total_income
 
@@ -105,12 +122,28 @@ async def analytics_command(update: Update, context: CallbackContext):
 def add_handlers(application):
     application.add_handler(CommandHandler("analytics", analytics_command))
 
-# Запуск Telegram-бота
-application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
-add_handlers(application)
+# Глобальная переменная для application (lazy initialization)
+application = None
+
+def get_application():
+    """ Получить экземпляр Application с проверкой токена """
+    global application
+    if application is None:
+        token = settings.TELEGRAM_BOT_TOKEN
+        if not token:
+            logger.warning("TELEGRAM_BOT_TOKEN не установлен. Telegram бот не будет работать.")
+            return None
+        application = Application.builder().token(token).build()
+        add_handlers(application)
+    return application
 
 def start_bot():
     """ Запуск бота с обработкой событий """
+    app = get_application()
+    if app is None:
+        logger.warning("Не удалось запустить Telegram бота: токен не установлен.")
+        return
+    
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(application.run_polling(drop_pending_updates=True, timeout=10))
+    loop.run_until_complete(app.run_polling(drop_pending_updates=True, timeout=10))

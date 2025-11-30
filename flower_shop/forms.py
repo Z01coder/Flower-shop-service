@@ -2,8 +2,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django import forms
 from .models import CustomUser, Order, Review
 
-# ——————————— ФОРМА СОЗДАНИЯ НОВОГО ПОЛЬЗОВАТЕЛЯ ———————————
 class CustomUserCreationForm(UserCreationForm):
+    """Форма регистрации нового пользователя."""
     class Meta:
         model = CustomUser
         fields = ('username', 'email', 'password1', 'password2')
@@ -13,8 +13,8 @@ class CustomUserCreationForm(UserCreationForm):
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
 
-# ———————— ФОРМА РЕДАКТИРОВАНИЯ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ————————
 class ProfileEditForm(forms.ModelForm):
+    """Форма редактирования профиля пользователя."""
     class Meta:
         model = CustomUser
         fields = ('username', 'email', 'phone', 'address')
@@ -24,8 +24,8 @@ class ProfileEditForm(forms.ModelForm):
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
 
-# ——————————————————————— ФОРМА ЗАКАЗА ———————————————————————
 class OrderForm(forms.ModelForm):
+    """Форма оформления заказа."""
     class Meta:
         model = Order
         fields = ['delivery_date', 'delivery_time', 'address', 'comment']
@@ -42,8 +42,8 @@ class OrderForm(forms.ModelForm):
             'comment': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
-# ———————————————————————— ФОРМА ОТЗЫВА ————————————————————————
 class ReviewForm(forms.ModelForm):
+    """Форма создания отзыва на товар."""
     class Meta:
         model = Review
         fields = ['rating', 'comment']

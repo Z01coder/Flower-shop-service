@@ -27,12 +27,19 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Смотрите https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # ПРЕДУПРЕЖДЕНИЕ ПО ТЕХНИКЕ БЕЗОПАСНОСТИ: берегите секретный ключ, используемый в продакшене!
-SECRET_KEY = 'django-insecure-lr&2mbpvij%37pv@q^th!9vbh*uj8@i!za_oon=*m04)4pbxi!'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-lr&2mbpvij%37pv@q^th!9vbh*uj8@i!za_oon=*m04)4pbxi!')
+if SECRET_KEY == 'django-insecure-lr&2mbpvij%37pv@q^th!9vbh*uj8@i!za_oon=*m04)4pbxi!':
+    import warnings
+    warnings.warn(
+        'Используется небезопасный SECRET_KEY по умолчанию. '
+        'Установите SECRET_KEY в переменных окружения для продакшена!',
+        UserWarning
+    )
 
 # ВНИМАНИЕ: не запускайте приложение с включённой отладкой в рабочей среде!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
 
 # Определение приложений
@@ -43,7 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'flower_shop',
+    'flower_shop.apps.OrdersConfig',
     'pytest_django',
 ]
 
@@ -112,7 +119,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Интернационализация
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'ru-ru'
+LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'Europe/Moscow'
 
@@ -163,6 +170,17 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
+        },
+        # Отключаем логирование HTTP запросов от telegram и httpx
+        'httpx': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Показываем только предупреждения и ошибки
+            'propagate': False,
+        },
+        'telegram': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
         },
     },
 }
