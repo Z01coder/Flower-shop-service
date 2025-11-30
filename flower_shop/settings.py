@@ -12,9 +12,13 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # Создавайте пути внутри проекта следующим образом: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Загрузка переменных окружения из .env файла
+load_dotenv()
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -139,8 +143,8 @@ LOGIN_REDIRECT_URL = 'home'
 LOGIN_URL = '/login/'
 
 # Telegram bot
-TELEGRAM_BOT_TOKEN = "токен бота"
-TELEGRAM_ADMIN_CHAT_ID = "ID чата (вписать БЕЗ кавычек)"
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_ADMIN_CHAT_ID = os.getenv('TELEGRAM_ADMIN_CHAT_ID', '')
 
 LOGGING = {
     'version': 1,
